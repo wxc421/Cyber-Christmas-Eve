@@ -29,7 +29,7 @@ export const MagicSpiral: React.FC = () => {
     
     // Growth parameters matching the tree
     const startY = -6.0;
-    const speed = 3.5;
+    const speed = 3.0; // Slightly faster than tree (2.5) to lead the way, but slowed from 3.5
     const delay = 0.5;
     const currentMaxY = startY + Math.max(0, time - delay) * speed;
 

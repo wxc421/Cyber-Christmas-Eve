@@ -20,7 +20,7 @@ const VERTEX_SHADER = `
   void main() {
     // Standard Growth Logic (Must match TreeParticles)
     float startY = -6.0;
-    float speed = 3.0;
+    float speed = 2.5; // Match tree speed
     float delay = 0.5;
     float currentY = startY + max(0.0, uTime - delay) * speed;
     
@@ -45,9 +45,7 @@ const VERTEX_SHADER = `
     z = tz;
     y = ty;
     
-    // Set final position relative to tree height (handled in JS generation, passed in position.y attribute logic)
-    // Wait, we need the base Y for the ring. Let's pass it in via a separate attribute or use the generated position.
-    // The geometry passed in 'position' contains the center Y of the ring.
+    // Set final position relative to tree height
     vec3 centerPos = position; 
     
     pos = vec3(x, centerPos.y + y, z);

@@ -21,7 +21,7 @@ const VERTEX_SHADER = `
     
     // --- ANIMATION CONFIG ---
     float startY = -6.0; 
-    float speed = 3.0;   
+    float speed = 2.5;   // Slowed down to match 5s duration
     float delay = 0.5;   
     
     // The "scanline" moves up over time

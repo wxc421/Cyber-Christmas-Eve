@@ -28,7 +28,8 @@ export const TopStar: React.FC = () => {
       }
 
       // Appearance Animation
-      const appearTime = 3.0;
+      // Delayed to 5.0s per user request
+      const appearTime = 5.0;
       let scale = 0;
       
       if (time > appearTime) {
