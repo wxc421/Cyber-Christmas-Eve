@@ -1,27 +1,45 @@
 import React, { Suspense, useState, useRef, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Stars } from '@react-three/drei';
+import { PerspectiveCamera, Stars } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette, Noise } from '@react-three/postprocessing';
+import * as THREE from 'three';
 import { TreeParticles } from './components/TreeParticles';
 import { MagicSpiral } from './components/MagicSpiral';
 import { StarRings } from './components/StarRings';
 import { Snow } from './components/Snow';
 import { TopStar } from './components/TopStar';
 import { CodeOverlay } from './components/CodeOverlay';
+import { PhotoGallery } from './components/PhotoGallery';
 
 // Camera rig for smooth movement
-const CameraRig = () => {
+const CameraRig = ({ viewMode }: { viewMode: 'tree' | 'universe' }) => {
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-    // Gentle floating camera
-    state.camera.position.x = Math.sin(t * 0.1) * 14;
-    state.camera.position.z = Math.cos(t * 0.1) * 14;
-    state.camera.lookAt(0, 0, 0);
+    
+    // Target position based on mode
+    let targetX = Math.sin(t * 0.1) * 14;
+    let targetZ = Math.cos(t * 0.1) * 14;
+    let targetY = 2;
+    let lookAtVec = new THREE.Vector3(0, 0, 0);
+
+    if (viewMode === 'universe') {
+       // Pull back significantly to see the universe
+       targetX = Math.sin(t * 0.05) * 25;
+       targetZ = Math.cos(t * 0.05) * 25;
+       targetY = 5;
+    }
+
+    // Smooth camera transition
+    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, targetX, 0.02);
+    state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, targetZ, 0.02);
+    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, targetY, 0.02);
+    
+    state.camera.lookAt(lookAtVec);
   });
   return null;
 };
 
-const Scene = () => {
+const Scene = ({ viewMode, setViewMode, onSelectPhoto }: { viewMode: 'tree' | 'universe', setViewMode: (m: 'tree' | 'universe') => void, onSelectPhoto: (url: string) => void }) => {
   return (
     <>
       <color attach="background" args={['#020617']} /> {/* Very dark slate */}
@@ -33,10 +51,27 @@ const Scene = () => {
       
       {/* Objects */}
       <group position={[0, -2, 0]}>
+        {/* Invisible Click Trigger for Tree */}
+        <mesh 
+          visible={false} 
+          position={[0, 5, 0]} 
+          onClick={(e) => {
+             e.stopPropagation();
+             if (viewMode === 'tree') setViewMode('universe');
+             else setViewMode('tree');
+          }}
+          onPointerOver={() => document.body.style.cursor = 'pointer'}
+          onPointerOut={() => document.body.style.cursor = 'auto'}
+        >
+            <coneGeometry args={[4.5, 12, 8]} />
+            <meshBasicMaterial transparent opacity={0} />
+        </mesh>
+
         <TreeParticles />
         <StarRings />
         <MagicSpiral />
         <TopStar />
+        <PhotoGallery mode={viewMode} onSelectPhoto={onSelectPhoto} />
       </group>
       
       <Snow />
@@ -56,18 +91,19 @@ const Scene = () => {
 
       {/* Camera */}
       <PerspectiveCamera makeDefault position={[0, 2, 12]} fov={50} />
-      <CameraRig />
+      <CameraRig viewMode={viewMode} />
     </>
   );
 };
 
 export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [viewMode, setViewMode] = useState<'tree' | 'universe'>('tree');
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     // Royalty-free calming holiday ambient music placeholder
-    // Using a reliable source for ambient piano
     audioRef.current = new Audio('https://cdn.pixabay.com/download/audio/2022/11/22/audio_febc508520.mp3?filename=christmas-tree-126685.mp3');
     audioRef.current.loop = true;
     audioRef.current.volume = 0.5;
@@ -95,11 +131,18 @@ export default function App() {
     <div className="relative w-full h-full bg-slate-950">
       <Suspense fallback={<div className="flex items-center justify-center h-full text-cyan-500 font-mono">Initializing Neural Christmas...</div>}>
         <Canvas gl={{ antialias: false, alpha: false, stencil: false, depth: true }} dpr={[1, 1.5]}>
-          <Scene />
+          <Scene viewMode={viewMode} setViewMode={setViewMode} onSelectPhoto={setSelectedPhoto} />
         </Canvas>
       </Suspense>
       
-      <CodeOverlay isAudioPlaying={isPlaying} toggleAudio={toggleAudio} />
+      <CodeOverlay 
+        isAudioPlaying={isPlaying} 
+        toggleAudio={toggleAudio} 
+        viewMode={viewMode} 
+        setViewMode={setViewMode} 
+        selectedPhoto={selectedPhoto}
+        onClosePhoto={() => setSelectedPhoto(null)}
+      />
     </div>
   );
 }
