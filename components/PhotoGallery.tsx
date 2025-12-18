@@ -8,11 +8,9 @@ interface PhotoGalleryProps {
   onSelectPhoto: (url: string) => void;
 }
 
-// Updated reliable holiday-themed image URLs
+// Fixed reliable holiday-themed image URLs to replace the broken ones
 const IMAGE_URLS = [
-  'https://images.pexels.com/photos/14733025/pexels-photo-14733025.jpeg',   // User provided replacement
-  'https://images.pexels.com/photos/14733025/pexels-photo-14733025.jpeg',   
-  'https://images.pexels.com/photos/14733025/pexels-photo-14733025.jpeg',   
+  'https://images.pexels.com/photos/14733025/pexels-photo-14733025.jpeg',
 ];
 
 const PhotoItem: React.FC<{
@@ -27,23 +25,21 @@ const PhotoItem: React.FC<{
 
   useFrame((state, delta) => {
     if (groupRef.current) {
-      // 1. Interpolate Position
       const targetPos = mode === 'tree' ? treePos : universePos;
-      // Lerp factor: faster when going to universe, smoother when returning
-      const lerpSpeed = mode === 'universe' ? 2.0 : 1.5;
+      // Faster transition when assembling tree, smoother when scattering
+      const lerpSpeed = mode === 'universe' ? 1.2 : 2.5;
       groupRef.current.position.lerp(targetPos, delta * lerpSpeed);
 
-      // 2. Scale Effect
-      // Tree mode: smaller (0.6). Universe mode: larger (1.5).
-      // Hover effect adds slight zoom.
-      const targetScale = (mode === 'tree' ? 0.6 : 1.5) * (hovered ? 1.2 : 1.0);
-      groupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), delta * 5);
+      // Scale significantly up in universe mode for a gallery feel
+      const targetScale = (mode === 'tree' ? 0.65 : 3.5) * (hovered ? 1.15 : 1.0);
+      groupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), delta * 4);
       
-      // 3. Look At Camera is handled by Billboard, but we can add floating drift in universe mode
       if (mode === 'universe') {
-          groupRef.current.rotation.z = Math.sin(state.clock.elapsedTime + treePos.x) * 0.1;
+          // Add a subtle drift to make it feel like floating in a void
+          groupRef.current.position.y += Math.sin(state.clock.elapsedTime * 0.4 + treePos.x * 2.0) * 0.005;
+          groupRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.2 + treePos.y * 1.5) * 0.08;
       } else {
-          groupRef.current.rotation.z = THREE.MathUtils.lerp(groupRef.current.rotation.z, 0, delta * 3);
+          groupRef.current.rotation.z = THREE.MathUtils.lerp(groupRef.current.rotation.z, 0, delta * 5);
       }
     }
   });
@@ -59,14 +55,18 @@ const PhotoItem: React.FC<{
           onPointerOver={() => setHover(true)}
           onPointerOut={() => setHover(false)}
           onClick={(e) => {
-            e.stopPropagation(); // Prevent clicking through to the tree
+            e.stopPropagation();
             onSelect();
           }}
         />
-        {/* Glow Frame */}
-        <mesh position={[0,0,-0.01]} scale={[1.05, 1.05, 1]}>
+        {/* Memory Frame Glow */}
+        <mesh position={[0,0,-0.03]} scale={[1.15, 1.15, 1]}>
             <planeGeometry />
-            <meshBasicMaterial color={hovered ? "#22d3ee" : "#0ea5e9"} transparent opacity={hovered ? 0.8 : 0.3} />
+            <meshBasicMaterial 
+              color={hovered ? "#67e8f9" : "#ffffff"} 
+              transparent 
+              opacity={hovered ? 0.8 : 0.1} 
+            />
         </mesh>
       </Billboard>
     </group>
@@ -75,16 +75,14 @@ const PhotoItem: React.FC<{
 
 export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ mode, onSelectPhoto }) => {
   const treeHeight = 10;
-  const maxRadius = 3.5;
+  const maxRadius = 3.8;
 
   const photos = useMemo(() => {
     return IMAGE_URLS.map((url, i) => {
-      // --- TREE POSITION ---
-      // Distribute along the cone
-      const relativeY = (i / IMAGE_URLS.length); // 0 to 1
-      const y = (relativeY * treeHeight * 0.7) - (treeHeight / 2) + 1.5; // Bias towards middle-top
-      
-      const radiusAtHeight = maxRadius * (1 - relativeY) + 0.5;
+      // Tree placement: distributed around the tree surface in a spiral
+      const relativeY = (i / IMAGE_URLS.length);
+      const y = (relativeY * treeHeight * 0.75) - (treeHeight / 2) + 1.2;
+      const radiusAtHeight = maxRadius * (1 - relativeY) + 0.45;
       const angle = (i * Math.PI * 2 * 1.618); // Golden ratio distribution
       
       const treePos = new THREE.Vector3(
@@ -93,11 +91,11 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ mode, onSelectPhoto 
         Math.sin(angle) * radiusAtHeight
       );
 
-      // --- UNIVERSE POSITION ---
-      // Distribute on a large sphere
-      const uRadius = 15 + Math.random() * 5;
-      const uTheta = Math.random() * Math.PI * 2;
-      const uPhi = Math.acos(2 * Math.random() - 1);
+      // Universe placement: spread out across the entire view area
+      // Positioned to surround the camera at various depths
+      const uRadius = 18 + (i * 4); 
+      const uTheta = (i / IMAGE_URLS.length) * Math.PI * 2 + (Math.random() - 0.5);
+      const uPhi = Math.acos(2 * Math.random() - 1); // Spherical distribution
       
       const universePos = new THREE.Vector3(
         uRadius * Math.sin(uPhi) * Math.cos(uTheta),
